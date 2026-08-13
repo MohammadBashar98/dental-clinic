@@ -699,45 +699,6 @@ function weekDates(){
     return d;
   });
 }
-function loadWeek(){
-  weekData = {};
-  for(const d of weekDates()){
-    const iso = isoDate(d);
-    const raw = storageGet(`day:${iso}`);
-    if(raw){
-      try { weekData[iso] = JSON.parse(raw); }
-      catch(e){ weekData[iso] = {}; }
-    } else weekData[iso] = {};
-  }
-}
-function saveDay(iso){ return storageSet(`day:${iso}`, JSON.stringify(weekData[iso] || {})); }
-
-function getCell(iso, hour){
-  if(!weekData[iso]) weekData[iso] = {};
-  if(!weekData[iso][hour]) weekData[iso][hour] = {split:false,first:[],second:[]};
-  return weekData[iso][hour];
-}
-function removeGroup(iso, groupId){
-  const day = weekData[iso];
-  if(!day) return;
-  Object.keys(day).forEach(h=>{
-    day[h].first = (day[h].first || []).filter(e=>e.groupId!==groupId);
-    day[h].second = (day[h].second || []).filter(e=>e.groupId!==groupId);
-  });
-}
-function deleteEntry(iso, hour, half, entryId){
-  const cell = getCell(iso, hour);
-  const arr = half==='first' ? cell.first : cell.second;
-  const entry = arr.find(e=>e.id===entryId);
-  if(!entry) return;
-  if(entry.groupId) removeGroup(iso, entry.groupId);
-  else{
-    const idx = arr.findIndex(e=>e.id===entryId);
-    if(idx>-1) arr.splice(idx,1);
-  }
-  saveDay(iso);
-}
-
 function renderHeader(){
   const dates = weekDates();
   const first = dates[0], last = dates[6];
@@ -824,7 +785,7 @@ function flashGlobalMessage(msg){
   toast._t=setTimeout(()=>toast.style.display='none',2200);
 }
 
-document.getElementById('bodyRows').addEventListener('click', async e=>{
+document.getElementById('bodyRows').addEventListener('click',async e=>{
   const target=e.target.closest('[data-action]');
   if(!target) return;
   const action=target.dataset.action, iso=target.dataset.iso, hour=target.dataset.hour;
