@@ -824,7 +824,7 @@ function flashGlobalMessage(msg){
   toast._t=setTimeout(()=>toast.style.display='none',2200);
 }
 
-document.getElementById('bodyRows').addEventListener('click',e=>{
+document.getElementById('bodyRows').addEventListener('click', async e=>{
   const target=e.target.closest('[data-action]');
   if(!target) return;
   const action=target.dataset.action, iso=target.dataset.iso, hour=target.dataset.hour;
