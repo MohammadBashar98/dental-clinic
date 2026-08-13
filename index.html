@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<meta name="theme-color" content="#0E5D52">
+<title>جدول مواعيد العيادة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4FAF8; --surface:#FFFFFF; --primary:#0E5D52; --primary-dark:#093F38;
+  --primary-tint:#E3F1EE; --accent:#E8734F; --accent-tint:#FCEAE3;
+  --slot-empty:#EEF6F4; --slot-empty-hover:#DEEEEA; --text:#1B2B28;
+  --text-muted:#6B8079; --border:#DCEAE6; --today-tint:#FBF3E9; --radius:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Cairo',Tahoma,Arial,sans-serif}
+body{padding-bottom:40px}
+button,input,textarea{font:inherit}
+.app-header{
+  background:linear-gradient(180deg,var(--primary-dark),var(--primary)); color:#fff;
+  padding:18px 16px 22px; border-radius:0 0 22px 22px;
+  box-shadow:0 6px 18px rgba(9,63,56,.18); position:relative; overflow:hidden;
+}
+.header-top{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.tooth-mark{width:38px;height:38px;flex-shrink:0}
+.clinic-name{
+  font-family:'Tajawal',sans-serif;font-weight:800;font-size:19px;background:transparent;border:none;
+  color:#fff;padding:0;outline:none;max-width:40vw;min-width:0
+}
+.clinic-name::placeholder{color:rgba(255,255,255,.6)}
+.today-btn{
+  background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.35);
+  border-radius:20px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap
+}
+.today-btn:active{background:rgba(255,255,255,.28)}
+.header-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.week-nav{display:flex;align-items:center;justify-content:space-between;margin-top:16px;gap:8px}
+.nav-btn{
+  width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.35);
+  background:rgba(255,255,255,.12);color:#fff;font-size:18px;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;flex-shrink:0
+}
+.nav-btn:active{background:rgba(255,255,255,.25)}
+.week-range{font-family:'Tajawal';font-weight:700;font-size:14.5px;text-align:center;line-height:1.5}
+.week-range .sub{display:block;font-family:'Cairo';font-weight:400;font-size:11.5px;opacity:.75;margin-top:1px}
+.split-hint{text-align:center;font-size:12px;color:var(--text-muted);margin:14px 16px 4px}
+.move-banner{
+  display:none;align-items:center;justify-content:space-between;gap:10px;background:var(--primary-dark);
+  color:#fff;margin:14px 10px 0;padding:10px 14px;border-radius:12px;font-family:'Tajawal';
+  font-weight:600;font-size:13px
+}
+.move-banner.open{display:flex}
+.move-banner button{
+  background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.4);
+  border-radius:10px;padding:6px 12px;font-size:12.5px;cursor:pointer;flex-shrink:0
+}
+body.is-moving .split-toggle{pointer-events:none;opacity:.25}
+.slot-moving{opacity:.5;outline:2px dashed var(--primary)!important}
+.drop-target{outline:2px dashed var(--accent);outline-offset:-2px;animation:pulseDrop 1.1s ease-in-out infinite}
+@keyframes pulseDrop{0%,100%{background:var(--slot-empty)}50%{background:var(--accent-tint)}}
+.grid-wrap{
+  margin:14px 10px 0;background:var(--surface);border-radius:var(--radius);overflow:hidden;
+  box-shadow:0 2px 10px rgba(14,93,82,.08);border:1px solid var(--border)
+}
+.grid-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:900px}
+thead th{
+  position:sticky;top:0;background:var(--surface);z-index:3;padding:10px 4px;font-family:'Tajawal';
+  font-weight:700;font-size:13px;border-bottom:1px solid var(--border);text-align:center;min-width:130px
+}
+thead th.time-col{
+  position:sticky;right:0;z-index:4;background:var(--surface);min-width:64px;width:64px;
+  box-shadow:-1px 0 0 var(--border)
+}
+thead th .daynum{display:block;font-size:11.5px;color:var(--text-muted);margin-top:2px}
+thead th.is-today{background:var(--today-tint)}
+thead th.is-today .daynum{color:var(--accent);font-weight:700}
+td.time-cell{
+  position:sticky;right:0;background:var(--surface);z-index:2;box-shadow:-1px 0 0 var(--border);
+  text-align:center;font-family:'Tajawal';font-weight:700;font-size:12px;color:var(--text-muted);
+  vertical-align:top;padding-top:10px;width:64px
+}
+tbody tr{border-top:1px solid var(--border)}
+td.slot-cell{padding:5px;vertical-align:top;border-inline-start:1px solid var(--border)}
+.hour-block{min-height:56px;position:relative}
+.split-toggle{
+  position:absolute;top:2px;left:2px;z-index:2;width:20px;height:20px;border-radius:6px;
+  border:1px solid var(--border);background:#fff;color:var(--text-muted);font-size:12px;line-height:1;
+  display:flex;align-items:center;justify-content:center;cursor:pointer
+}
+.slot-list{
+  border-radius:10px;padding:20px 4px 4px;min-height:44px;position:relative;
+  display:flex;flex-direction:column;gap:3px
+}
+.slot-list.drop-target{background:var(--slot-empty)}
+.appt-card{
+  border-radius:8px;padding:5px 7px;font-size:11.5px;cursor:pointer;position:relative;
+  background:var(--slot-empty);line-height:1.3;border:1px solid rgba(0,0,0,.08)
+}
+.appt-card .slot-name{
+  font-family:'Tajawal';font-weight:700;font-size:11.5px;color:var(--primary-dark);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block
+}
+.group-badge{font-size:9px;background:rgba(255,255,255,.65);border-radius:4px;padding:1px 4px;margin-inline-start:4px;font-weight:600}
+.appt-continue{height:9px;border-radius:5px;cursor:pointer;position:relative;opacity:.85;background:var(--slot-empty)}
+.appt-add-btn{
+  border:1px dashed var(--border);background:transparent;border-radius:8px;padding:4px;
+  font-size:13px;color:var(--text-muted);cursor:pointer;width:100%
+}
+.appt-add-btn:active{background:var(--slot-empty-hover)}
+.btn-delete-x{
+  position:absolute;top:-9px;right:-9px;left:auto;z-index:6;width:27px;height:27px;border-radius:50%;
+  border:1px solid #E8734F;background:#fff;color:var(--accent);font-size:15px;line-height:1;font-weight:700;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 5px rgba(232,115,79,.5)
+}
+.btn-delete-x:active{background:var(--accent);color:#fff;transform:scale(.94)}
+.appt-card.slot-moving,.appt-continue.slot-moving{z-index:5}
+.overlay{
+  position:fixed;inset:0;background:rgba(9,25,22,.45);display:none;align-items:flex-end;
+  justify-content:center;z-index:50;height:100vh;height:100dvh
+}
+.overlay.open{display:flex}
+.modal{
+  background:#fff;width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:20px 18px 26px;
+  box-shadow:0 -8px 30px rgba(0,0,0,.2);animation:slideUp .18s ease-out;position:relative;
+  max-height:88vh;max-height:88dvh;overflow-y:auto;-webkit-overflow-scrolling:touch
+}
+@keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-title{font-family:'Tajawal';font-weight:800;font-size:16px;margin:0 0 2px}
+.modal-sub{font-size:12.5px;color:var(--text-muted);margin:0 0 16px}
+.field-label{font-family:'Tajawal';font-weight:600;font-size:13px;margin-bottom:6px;display:block}
+.field-input{
+  width:100%;border:1px solid var(--border);background:var(--bg);border-radius:10px;
+  padding:11px 12px;font-size:14.5px;margin-bottom:14px;outline:none
+}
+.field-input:focus{border-color:var(--primary)}
+textarea.field-input{min-height:70px;resize:vertical}
+.modal-actions{display:flex;gap:10px;margin-top:4px}
+.btn{flex:1;padding:12px;border-radius:12px;border:none;font-family:'Tajawal';font-weight:700;font-size:14px;cursor:pointer}
+.btn-save{background:var(--primary);color:#fff}
+.btn-save:active{background:var(--primary-dark)}
+.field-error{display:none;color:var(--accent);font-size:12px;margin:-10px 0 12px}
+.btn-cancel{background:var(--bg);color:var(--text-muted);border:1px solid var(--border)}
+.close-x{position:absolute;left:16px;top:14px;background:none;border:none;font-size:20px;color:var(--text-muted);cursor:pointer}
+.doctor-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.doctor-chip{
+  border:2px solid transparent;border-radius:20px;padding:8px 14px;font-size:13px;font-weight:600;
+  cursor:pointer;color:var(--text);background:var(--bg)
+}
+.doctor-chip.selected{border-color:var(--primary-dark);box-shadow:0 0 0 2px rgba(14,93,82,.15) inset}
+.doctor-chip.none-chip{background:var(--bg);border:2px dashed var(--border);color:var(--text-muted)}
+.doctor-chip.none-chip.selected{border-color:var(--text-muted);border-style:solid}
+.doctor-empty-hint{font-size:12.5px;color:var(--text-muted);margin:-4px 0 16px}
+.doctor-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.doctor-color-dot{width:26px;height:26px;border-radius:50%;border:1px solid rgba(0,0,0,.12);cursor:pointer;flex-shrink:0}
+.doctor-name-input{
+  flex:1;border:1px solid transparent;background:transparent;font-family:'Tajawal';font-weight:600;
+  font-size:14px;padding:6px 4px;border-radius:8px;outline:none;color:var(--text)
+}
+.doctor-name-input:focus{border-color:var(--border);background:var(--bg)}
+.icon-btn{
+  min-width:30px;height:30px;border-radius:8px;border:none;background:var(--accent-tint);color:var(--accent);
+  font-size:13px;cursor:pointer;flex-shrink:0;padding:0 8px
+}
+.icon-btn.confirm{background:var(--accent);color:#fff}
+.color-swatches{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.swatch{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer}
+.swatch.selected{border-color:var(--primary-dark)}
+.inline-swatches{margin:6px 0 10px;padding-inline-start:36px}
+.add-doctor-box{margin-top:8px;padding-top:14px;border-top:1px solid var(--border)}
+@media (max-width:600px){
+  .app-header{padding-inline:12px}
+  .clinic-name{max-width:44vw;font-size:17px}
+  .today-btn{padding:7px 10px}
+  table{min-width:850px}
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-top">
+    <div class="brand">
+      <svg class="tooth-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+        <path d="M24 6c-5 0-7.5 2.4-10.5 2.4C10 8.4 7 6.5 5 8.8c-2.3 2.7-1.6 8 .3 13.5 1.8 5.3 2.4 10.9 4 15.6.9 2.7 2.1 4.6 4 4.6 2.4 0 2.6-4.3 3.4-8.6.6-3.2 1.3-6.3 3.3-6.3s2.7 3.1 3.3 6.3c.8 4.3 1 8.6 3.4 8.6 1.9 0 3.1-1.9 4-4.6 1.6-4.7 2.2-10.3 4-15.6 1.9-5.5 2.6-10.8.3-13.5-2-2.3-5-.4-8.5-.4C31.5 8.4 29 6 24 6Z" fill="#fff" fill-opacity=".95"/>
+      </svg>
+      <div style="min-width:0">
+        <input id="clinicName" class="clinic-name" placeholder="عيادتي لطب الأسنان">
+        <div id="clinicCodeDisplay" style="font-size:10px;opacity:.75;margin-top:2px"></div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="today-btn" id="doctorsBtn">👨‍⚕️ الأطباء</button>
+      <button class="today-btn" id="todayBtn">اليوم</button>
+      <button class="today-btn" id="logoutBtn">تسجيل الخروج</button>
+    </div>
+  </div>
+  <div class="week-nav">
+    <button class="nav-btn" id="nextBtn" aria-label="الأسبوع التالي">‹</button>
+    <div class="week-range" id="weekRange"></div>
+    <button class="nav-btn" id="prevBtn" aria-label="الأسبوع السابق">›</button>
+  </div>
+</div>
+
+<div class="split-hint" id="normalHint">
+  اضغط + لإضافة موعد (حتى ٤ مواعيد لكل طبيب بنفس الوقت)، أو اضغط مطولاً على موعد لنقله أو حذفه
+</div>
+
+<div class="move-banner" id="moveBanner">
+  <span id="moveBannerText"></span>
+  <button id="cancelMoveBtn">إلغاء</button>
+</div>
+
+<div class="grid-wrap">
+  <div class="grid-scroll">
+    <table id="scheduleTable">
+      <thead><tr id="headRow"></tr></thead>
+      <tbody id="bodyRows"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <button class="close-x" id="closeModal">✕</button>
+    <p class="modal-title" id="modalTitle">حجز موعد</p>
+    <p class="modal-sub" id="modalSub"></p>
+    <label class="field-label">اسم المريض</label>
+    <input class="field-input" id="patientName" placeholder="مثال: أحمد محمد">
+    <p class="field-error" id="nameError">يرجى إدخال اسم المريض</p>
+    <label class="field-label">ملاحظة</label>
+    <textarea class="field-input" id="patientNote" placeholder="مثال: تنظيف أسنان، متابعة حشوة..."></textarea>
+    <label class="field-label">الطبيب</label>
+    <div class="doctor-chips" id="doctorChips"></div>
+    <div id="durationSection" style="display:none">
+      <label class="field-label">مدة الموعد</label>
+      <div class="doctor-chips" id="durationChips"></div>
+    </div>
+    <p class="field-error" id="modalError"></p>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" id="cancelBtn">إلغاء</button>
+      <button class="btn btn-save" id="saveBtn">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="doctorsOverlay">
+  <div class="modal">
+    <button class="close-x" id="closeDoctorsModal">✕</button>
+    <p class="modal-title">إدارة الأطباء</p>
+    <p class="modal-sub">لون كل طبيب يظهر تلقائياً على مواعيده بالجدول</p>
+    <div id="doctorsList"></div>
+    <div class="add-doctor-box">
+      <label class="field-label">إضافة طبيب جديد</label>
+      <input class="field-input" id="newDoctorName" placeholder="مثال: د. سارة خليل">
+      <p class="field-error" id="doctorNameError">يرجى إدخال اسم الطبيب</p>
+      <label class="field-label">اللون</label>
+      <div class="color-swatches" id="newDoctorColors"></div>
+      <button class="btn btn-save" id="addDoctorBtn" style="width:100%;margin-top:12px">إضافة الطبيب</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/*
+ * Supabase configuration
+ *
+ * 1. Create a Supabase project.
+ * 2. Open Project Settings -> API.
+ * 3. Copy the Project URL and anon/public key below.
+ *
+ * IMPORTANT: The anon key is intended to be used in browser code.
+ * Never put the Supabase service_role key in this file.
+ */
+const SUPABASE_URL = 'https://vviwgqtyycbglqxkpxtm.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_zJy5GWdtxO7n0BH5hLudcg_EU2U1qX-';
+
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+const DAY_NAMES = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const MONTH_NAMES = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const HOURS = Array.from({length:10}, (_,i)=>10+i);
+const MAX_PER_DOCTOR = 4;
+
+let currentWeekStart = startOfWeek(new Date());
+let weekData = {};
+let activeSlot = null;
+let armedEntry = null;
+let longPressTimer = null;
+let longPressJustFired = false;
+let pressStartXY = null;
+
+const COLOR_PALETTE = ['#CFE9FB','#FBD4D4','#FCEFB4','#D7F3DD','#E6DBFA','#FCE1C2','#CFEFE9','#E4E4E4'];
+
+let doctors = [];
+let modalSelectedDoctorId = null;
+let modalSelectedDuration = 1;
+let newDoctorColor = COLOR_PALETTE[0];
+let pendingDeleteDoctorId = null;
+let currentUser = null;
+let clinicId = null;
+let clinicName = 'عيادتي لطب الأسنان';
+
+function genId(){
+  if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'e'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
+}
+
+function startOfWeek(d){
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = (day - 6 + 7) % 7;
+  date.setDate(date.getDate() - diff);
+  date.setHours(0,0,0,0);
+  return date;
+}
+
+function isoDate(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function isSameDay(a,b){ return isoDate(a)===isoDate(b); }
+function fmtHour(h){ return `${String(h).padStart(2,'0')}:00`; }
+function fmtHalf(h, half){ return half==='first' ? `${String(h).padStart(2,'0')}:00` : `${String(h).padStart(2,'0')}:30`; }
+
+function weekDates(){
+  return Array.from({length:7}, (_,i)=>{
+    const d = new Date(currentWeekStart);
+    d.setDate(d.getDate()+i);
+    return d;
+  });
+}
+
+function flashGlobalMessage(msg){
+  let toast = document.getElementById('toast');
+  if(!toast){
+    toast=document.createElement('div');
+    toast.id='toast';
+    toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1B2B28;color:#fff;padding:10px 16px;border-radius:20px;font-family:Tajawal,sans-serif;font-size:13px;z-index:99;box-shadow:0 4px 14px rgba(0,0,0,.25);max-width:88vw;text-align:center;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent=msg;
+  toast.style.display='block';
+  clearTimeout(toast._t);
+  toast._t=setTimeout(()=>toast.style.display='none',3000);
+}
+
+function showFatalError(msg){
+  document.body.innerHTML = `
+    <div dir="rtl" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#F4FAF8;font-family:Cairo,Tahoma,sans-serif;color:#1B2B28">
+      <div style="width:min(520px,100%);background:#fff;border:1px solid #DCEAE6;border-radius:18px;padding:24px;box-shadow:0 4px 18px rgba(14,93,82,.08)">
+        <h2 style="font-family:Tajawal;margin-top:0">تعذر تشغيل التطبيق</h2>
+        <p>${escapeHtml(msg)}</p>
+      </div>
+    </div>`;
+}
+
+async function requireAuth(){
+  const {data, error} = await supabaseClient.auth.getSession();
+  if(error) throw error;
+
+  currentUser = data.session?.user || null;
+  if(!currentUser){
+    await showLoginScreen();
+    return false;
+  }
+
+  await ensureClinic();
+  return true;
+}
+
+async function ensureClinic(){
+  const {data: membership, error: membershipError} = await supabaseClient
+    .from('clinic_members')
+    .select('clinic_id')
+    .eq('user_id', currentUser.id)
+    .limit(1)
+    .maybeSingle();
+
+  if(membershipError) throw membershipError;
+
+  if(membership){
+    clinicId = membership.clinic_id;
+    return;
+  }
+
+  // First authenticated doctor creates the clinic automatically.
+  const {data: clinic, error: clinicError} = await supabaseClient
+    .from('clinics')
+    .insert({name:'عيادتي لطب الأسنان', created_by:currentUser.id})
+    .select('id')
+    .single();
+
+  if(clinicError) throw clinicError;
+
+  const {error: memberError} = await supabaseClient
+    .from('clinic_members')
+    .insert({clinic_id:clinic.id, user_id:currentUser.id, role:'owner'});
+
+  if(memberError) throw memberError;
+
+  clinicId = clinic.id;
+}
+
+async function showLoginScreen(){
+  document.body.innerHTML = `
+    <div id="authScreen" dir="rtl" style="min-height:100vh;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px">
+      <div style="width:min(420px,100%);background:#fff;border:1px solid var(--border);border-radius:20px;padding:24px;box-shadow:0 8px 28px rgba(14,93,82,.10)">
+        <div style="text-align:center;margin-bottom:20px">
+          <div style="font-size:42px">🦷</div>
+          <h1 style="font-family:Tajawal;margin:8px 0 4px;font-size:22px">جدول مواعيد العيادة</h1>
+          <p style="color:var(--text-muted);margin:0;font-size:13px">تسجيل دخول الأطباء</p>
+        </div>
+
+        <label class="field-label">البريد الإلكتروني</label>
+        <input class="field-input" id="authEmail" type="email" autocomplete="email" placeholder="doctor@example.com">
+
+        <label class="field-label">كلمة المرور</label>
+        <input class="field-input" id="authPassword" type="password" autocomplete="current-password" placeholder="••••••••">
+
+        <div id="clinicCodeWrap" style="display:none">
+          <label class="field-label">رمز العيادة <span style="font-weight:400;color:var(--text-muted)">(للانضمام إلى عيادة موجودة)</span></label>
+          <input class="field-input" id="clinicCode" autocomplete="off" placeholder="مثال: ABC12345">
+        </div>
+
+        <p id="authError" class="field-error" style="display:none"></p>
+
+        <button class="btn btn-save" id="loginBtn" style="width:100%;margin-top:4px">تسجيل الدخول</button>
+        <button class="btn btn-cancel" id="signupBtn" style="width:100%;margin-top:10px">إنشاء حساب طبيب</button>
+      </div>
+    </div>`;
+
+  const emailEl=document.getElementById('authEmail');
+  const passwordEl=document.getElementById('authPassword');
+  const errorEl=document.getElementById('authError');
+
+  const run = async (signup)=>{
+    errorEl.style.display='none';
+    const email=emailEl.value.trim();
+    const password=passwordEl.value;
+
+    if(!email || !password){
+      errorEl.textContent='يرجى إدخال البريد الإلكتروني وكلمة المرور';
+      errorEl.style.display='block';
+      return;
+    }
+
+    if(password.length < 6){
+      errorEl.textContent='كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+      errorEl.style.display='block';
+      return;
+    }
+
+    const button=signup?document.getElementById('signupBtn'):document.getElementById('loginBtn');
+    button.disabled=true;
+    button.textContent=signup?'جاري إنشاء الحساب...':'جاري تسجيل الدخول...';
+
+    try{
+      if(signup){
+        const {data,error}=await supabaseClient.auth.signUp({email,password});
+        if(error) throw error;
+
+        if(!data.session){
+          errorEl.textContent='تم إنشاء الحساب. إذا كان تأكيد البريد الإلكتروني مفعلاً في Supabase، افتح رسالة التأكيد ثم سجّل الدخول.';
+          errorEl.style.display='block';
+          return;
+        }
+
+        currentUser=data.user;
+        const code=(document.getElementById('clinicCode')?.value || '').trim().toUpperCase();
+
+        if(code){
+          const {data:joined,error:joinError}=await supabaseClient.rpc('join_clinic_by_code',{p_code:code});
+          if(joinError) throw joinError;
+          if(!joined) throw new Error('رمز العيادة غير صحيح أو انتهت صلاحيته');
+          clinicId=joined;
+        }else{
+          await ensureClinic();
+        }
+      }else{
+        const {error}=await supabaseClient.auth.signInWithPassword({email,password});
+        if(error) throw error;
+        currentUser=(await supabaseClient.auth.getUser()).data.user;
+        await ensureClinic();
+      }
+
+      location.reload();
+    }catch(error){
+      console.error(error);
+      errorEl.textContent=error.message || 'حدث خطأ أثناء تسجيل الدخول';
+      errorEl.style.display='block';
+    }finally{
+      button.disabled=false;
+      button.textContent=signup?'إنشاء حساب طبيب':'تسجيل الدخول';
+    }
+  };
+
+  document.getElementById('loginBtn').addEventListener('click',()=>run(false));
+  document.getElementById('signupBtn').addEventListener('click',()=>run(true));
+  document.getElementById('signupBtn').addEventListener('click',()=>{
+    document.getElementById('clinicCodeWrap').style.display='block';
+    document.getElementById('signupBtn').textContent='إنشاء حساب طبيب / الانضمام';
+  });
+
+  passwordEl.addEventListener('keydown',e=>{
+    if(e.key==='Enter') run(false);
+  });
+}
+
+async function logout(){
+  const {error}=await supabaseClient.auth.signOut();
+  if(error){
+    console.error(error);
+    flashGlobalMessage('تعذر تسجيل الخروج');
+    return;
+  }
+  location.reload();
+}
+
+async function loadClinicName(){
+  const {data,error}=await supabaseClient
+    .from('clinics')
+    .select('name,invite_code')
+    .eq('id',clinicId)
+    .single();
+
+  if(error) throw error;
+  clinicName=data?.name || 'عيادتي لطب الأسنان';
+  document.getElementById('clinicName').value=clinicName;
+  const codeEl=document.getElementById('clinicCodeDisplay');
+  if(codeEl && data?.invite_code){
+    codeEl.textContent=`رمز العيادة: ${data.invite_code}`;
+    codeEl.title='شارك هذا الرمز مع الأطباء الذين تريد إضافتهم إلى نفس العيادة';
+  }
+}
+
+async function saveClinicName(){
+  const name=document.getElementById('clinicName').value.trim() || 'عيادتي لطب الأسنان';
+  const {error}=await supabaseClient
+    .from('clinics')
+    .update({name})
+    .eq('id',clinicId);
+
+  if(error){
+    console.error(error);
+    flashGlobalMessage('⚠ تعذر حفظ اسم العيادة');
+  }
+}
+
+async function loadDoctors(){
+  const {data,error}=await supabaseClient
+    .from('doctors')
+    .select('id,name,color')
+    .eq('clinic_id',clinicId)
+    .order('created_at',{ascending:true});
+
+  if(error) throw error;
+  doctors=data || [];
+}
+
+async function saveDoctor(doc){
+  const {error}=await supabaseClient
+    .from('doctors')
+    .upsert({
+      id:doc.id,
+      clinic_id:clinicId,
+      name:doc.name,
+      color:doc.color
+    });
+
+  if(error) throw error;
+}
+
+async function loadWeek(){
+  weekData={};
+  const dates=weekDates();
+  const from=isoDate(dates[0]);
+  const to=isoDate(dates[6]);
+
+  const {data,error}=await supabaseClient
+    .from('appointments')
+    .select('id,appointment_date,start_hour,half,patient_name,note,doctor_id,group_id,group_start,group_len')
+    .eq('clinic_id',clinicId)
+    .gte('appointment_date',from)
+    .lte('appointment_date',to)
+    .order('start_hour',{ascending:true});
+
+  if(error) throw error;
+
+  for(const d of dates) weekData[isoDate(d)]={};
+
+  for(const row of (data || [])){
+    const iso=row.appointment_date;
+    const hour=Number(row.start_hour);
+    const half=row.half || 'first';
+    if(!weekData[iso]) weekData[iso]={};
+    if(!weekData[iso][hour]) weekData[iso][hour]={split:false,first:[],second:[]};
+
+    if(half==='second') weekData[iso][hour].split=true;
+
+    weekData[iso][hour][half].push({
+      id:row.id,
+      name:row.patient_name,
+      note:row.note || '',
+      doctorId:row.doctor_id,
+      groupId:row.group_id,
+      groupStart:row.group_start,
+      groupLen:row.group_len
+    });
+  }
+}
+
+async function saveDay(iso){
+  // Persistence is handled by individual appointment mutations below.
+  return true;
+}
+
+function doctorById(id){ return doctors.find(d=>d.id===id); }
+
+function getCell(iso, hour){
+  if(!weekData[iso]) weekData[iso]={};
+  if(!weekData[iso][hour]) weekData[iso][hour]={split:false,first:[],second:[]};
+  return weekData[iso][hour];
+}
+
+function removeGroupLocal(iso, groupId){
+  const day=weekData[iso];
+  if(!day) return;
+  Object.keys(day).forEach(h=>{
+    day[h].first=(day[h].first||[]).filter(e=>e.groupId!==groupId);
+    day[h].second=(day[h].second||[]).filter(e=>e.groupId!==groupId);
+  });
+}
+
+async function deleteEntry(iso,hour,half,entryId){
+  const cell=getCell(iso,hour);
+  const arr=half==='first'?cell.first:cell.second;
+  const entry=arr.find(e=>e.id===entryId);
+  if(!entry) return;
+
+  try{
+    if(entry.groupId){
+      const {error}=await supabaseClient
+        .from('appointments')
+        .delete()
+        .eq('clinic_id',clinicId)
+        .eq('group_id',entry.groupId);
+      if(error) throw error;
+      removeGroupLocal(iso,entry.groupId);
+    }else{
+      const {error}=await supabaseClient
+        .from('appointments')
+        .delete()
+        .eq('clinic_id',clinicId)
+        .eq('id',entryId);
+      if(error) throw error;
+      const idx=arr.findIndex(e=>e.id===entryId);
+      if(idx>-1) arr.splice(idx,1);
+    }
+    renderBody();
+  }catch(error){
+    console.error(error);
+    flashGlobalMessage('⚠ تعذر حذف الموعد');
+  }
+}
+
+function doctorById(id){ return doctors.find(d=>d.id===id); }
+function genId(){ return 'e'+Date.now()+'_'+Math.random().toString(36).slice(2,7); }
+
+function startOfWeek(d){
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = (day - 6 + 7) % 7;
+  date.setDate(date.getDate() - diff);
+  date.setHours(0,0,0,0);
+  return date;
+}
+function isoDate(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function isSameDay(a,b){ return isoDate(a)===isoDate(b); }
+function fmtHour(h){ return `${String(h).padStart(2,'0')}:00`; }
+function fmtHalf(h, half){
+  return half==='first' ? `${String(h).padStart(2,'0')}:00` : `${String(h).padStart(2,'0')}:30`;
+}
+function weekDates(){
+  return Array.from({length:7}, (_,i)=>{
+    const d = new Date(currentWeekStart);
+    d.setDate(d.getDate()+i);
+    return d;
+  });
+}
+function loadWeek(){
+  weekData = {};
+  for(const d of weekDates()){
+    const iso = isoDate(d);
+    const raw = storageGet(`day:${iso}`);
+    if(raw){
+      try { weekData[iso] = JSON.parse(raw); }
+      catch(e){ weekData[iso] = {}; }
+    } else weekData[iso] = {};
+  }
+}
+function saveDay(iso){ return storageSet(`day:${iso}`, JSON.stringify(weekData[iso] || {})); }
+
+function getCell(iso, hour){
+  if(!weekData[iso]) weekData[iso] = {};
+  if(!weekData[iso][hour]) weekData[iso][hour] = {split:false,first:[],second:[]};
+  return weekData[iso][hour];
+}
+function removeGroup(iso, groupId){
+  const day = weekData[iso];
+  if(!day) return;
+  Object.keys(day).forEach(h=>{
+    day[h].first = (day[h].first || []).filter(e=>e.groupId!==groupId);
+    day[h].second = (day[h].second || []).filter(e=>e.groupId!==groupId);
+  });
+}
+function deleteEntry(iso, hour, half, entryId){
+  const cell = getCell(iso, hour);
+  const arr = half==='first' ? cell.first : cell.second;
+  const entry = arr.find(e=>e.id===entryId);
+  if(!entry) return;
+  if(entry.groupId) removeGroup(iso, entry.groupId);
+  else{
+    const idx = arr.findIndex(e=>e.id===entryId);
+    if(idx>-1) arr.splice(idx,1);
+  }
+  saveDay(iso);
+}
+
+function renderHeader(){
+  const dates = weekDates();
+  const first = dates[0], last = dates[6];
+  const sameMonth = first.getMonth() === last.getMonth();
+  const rangeText = sameMonth
+    ? `${first.getDate()} - ${last.getDate()} ${MONTH_NAMES[first.getMonth()]} ${first.getFullYear()}`
+    : `${first.getDate()} ${MONTH_NAMES[first.getMonth()]} - ${last.getDate()} ${MONTH_NAMES[last.getMonth()]} ${last.getFullYear()}`;
+  document.getElementById('weekRange').innerHTML = `الأسبوع الحالي<span class="sub">${rangeText}</span>`;
+  const headRow = document.getElementById('headRow');
+  headRow.innerHTML = '<th class="time-col">الوقت</th>' + dates.map(d=>{
+    const today = isSameDay(d,new Date());
+    return `<th class="${today?'is-today':''}">${DAY_NAMES[d.getDay()]}<span class="daynum">${d.getDate()} ${MONTH_NAMES[d.getMonth()]}</span></th>`;
+  }).join('');
+}
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+function cardHtml(iso,hour,half,entry){
+  const doc = entry.doctorId ? doctorById(entry.doctorId) : null;
+  const bg = doc ? doc.color : 'var(--slot-empty)';
+  const isArmed = armedEntry && armedEntry.iso===iso && String(armedEntry.hour)===String(hour) &&
+    armedEntry.half===half && armedEntry.entryId===entry.id;
+  const isContinuation = entry.groupId && entry.groupStart !== Number(hour);
+  const title = `${entry.name}${doc?(' — '+doc.name):''}${entry.note?(' | '+entry.note):''}`;
+  const delBtn = isArmed ? `<button class="btn-delete-x" data-action="delete-armed" data-iso="${iso}" data-hour="${hour}" data-half="${half}" data-entry-id="${entry.id}" title="حذف">×</button>` : '';
+  if(isContinuation){
+    return `<div class="appt-continue ${isArmed?'slot-moving':''}" style="background:${bg}" data-action="open-entry" data-iso="${iso}" data-hour="${hour}" data-half="${half}" data-entry-id="${entry.id}" title="${escapeHtml(title)}">${delBtn}</div>`;
+  }
+  const badge = entry.groupLen && entry.groupLen>1 ? `<span class="group-badge">${entry.groupLen}س</span>` : '';
+  return `<div class="appt-card ${isArmed?'slot-moving':''}" style="background:${bg}" data-action="open-entry" data-iso="${iso}" data-hour="${hour}" data-half="${half}" data-entry-id="${entry.id}" title="${escapeHtml(title)}">
+    ${delBtn}<span class="slot-name">${escapeHtml(entry.name)}${badge}</span>
+  </div>`;
+}
+function listHtml(iso,hour,half,arr){
+  const dropActive = armedEntry && armedEntry.canMove &&
+    !(armedEntry.iso===iso && String(armedEntry.hour)===String(hour) && armedEntry.half===half);
+  const cards = arr.map(e=>cardHtml(iso,hour,half,e)).join('');
+  return `<div class="slot-list ${dropActive?'drop-target':''}" data-action="drop-zone" data-iso="${iso}" data-hour="${hour}" data-half="${half}">
+    ${cards}
+    <button class="appt-add-btn" data-action="add-entry" data-iso="${iso}" data-hour="${hour}" data-half="${half}">+</button>
+  </div>`;
+}
+function slotHtml(iso,hour,cell){
+  if(!cell.split){
+    return `<div class="hour-block">
+      <button class="split-toggle" data-action="split" data-iso="${iso}" data-hour="${hour}" title="تقسيم الساعة">⬍</button>
+      ${listHtml(iso,hour,'first',cell.first || [])}
+    </div>`;
+  }
+  return `<div class="hour-block">
+    <button class="split-toggle" data-action="merge" data-iso="${iso}" data-hour="${hour}" title="دمج الساعة">⬌</button>
+    ${listHtml(iso,hour,'first',cell.first || [])}
+    ${listHtml(iso,hour,'second',cell.second || [])}
+  </div>`;
+}
+function renderBody(){
+  const dates = weekDates();
+  document.getElementById('bodyRows').innerHTML = HOURS.map(hour=>{
+    const cells = dates.map(d=>{
+      const iso = isoDate(d);
+      return `<td class="slot-cell">${slotHtml(iso,hour,getCell(iso,hour))}</td>`;
+    }).join('');
+    return `<tr><td class="time-cell">${fmtHour(hour)}</td>${cells}</tr>`;
+  }).join('');
+}
+async function render(){
+  await Promise.all([loadWeek(), loadDoctors(), loadClinicName()]);
+  renderHeader();
+  renderBody();
+}
+function flashGlobalMessage(msg){
+  let toast = document.getElementById('toast');
+  if(!toast){
+    toast=document.createElement('div');
+    toast.id='toast';
+    toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1B2B28;color:#fff;padding:10px 16px;border-radius:20px;font-family:Tajawal,sans-serif;font-size:13px;z-index:99;box-shadow:0 4px 14px rgba(0,0,0,.25);max-width:88vw;text-align:center;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent=msg;
+  toast.style.display='block';
+  clearTimeout(toast._t);
+  toast._t=setTimeout(()=>toast.style.display='none',2200);
+}
+
+document.getElementById('bodyRows').addEventListener('click',e=>{
+  const target=e.target.closest('[data-action]');
+  if(!target) return;
+  const action=target.dataset.action, iso=target.dataset.iso, hour=target.dataset.hour;
+
+  if(action==='split'){
+    const cell=getCell(iso,hour);
+    if(cell.first.some(en=>en.groupId)){ flashGlobalMessage('لا يمكن تقسيم ساعة ضمن موعد ممتد لأكثر من ساعة'); return; }
+    cell.split=true; cell.second=[]; renderBody();
+  } else if(action==='merge'){
+    const cell=getCell(iso,hour);
+    const merged=[...(cell.first||[]),...(cell.second||[])];
+    const counts={};
+    for(const en of merged){
+      const k=en.doctorId || '_none';
+      counts[k]=(counts[k]||0)+1;
+      if(counts[k]>MAX_PER_DOCTOR){ flashGlobalMessage('لا يمكن الدمج، يوجد أكثر من ٤ مواعيد لنفس الطبيب'); return; }
+    }
+    try{
+      for(const en of (cell.second||[])){
+        const {error}=await supabaseClient.from('appointments').update({half:'first'}).eq('clinic_id',clinicId).eq('id',en.id);
+        if(error) throw error;
+      }
+      cell.split=false; cell.first=merged; cell.second=[]; renderBody();
+    }catch(error){
+      console.error(error);
+      flashGlobalMessage('⚠ تعذر دمج الساعة');
+    }
+  } else if(action==='add-entry'){
+    if(armedEntry){
+      if(!armedEntry.canMove){ cancelArm(); return; }
+      if(armedEntry.iso===iso && String(armedEntry.hour)===String(hour) && armedEntry.half===target.dataset.half){ cancelArm(); return; }
+      completeArmedMove(iso,hour,target.dataset.half);
+      return;
+    }
+    openModal(iso,hour,target.dataset.half,null);
+  } else if(action==='open-entry'){
+    if(longPressJustFired){ longPressJustFired=false; return; }
+    if(armedEntry){ cancelArm(); return; }
+    openModal(iso,hour,target.dataset.half,target.dataset.entryId);
+  } else if(action==='delete-armed'){
+    deleteEntry(iso,hour,target.dataset.half,target.dataset.entryId);
+    cancelArm();
+  } else if(action==='drop-zone'){
+    if(!armedEntry) return;
+    if(!armedEntry.canMove){ cancelArm(); return; }
+    if(armedEntry.iso===iso && String(armedEntry.hour)===String(hour) && armedEntry.half===target.dataset.half){ cancelArm(); return; }
+    completeArmedMove(iso,hour,target.dataset.half);
+  }
+});
+
+const bodyRowsEl=document.getElementById('bodyRows');
+let pendingArmTarget=null;
+bodyRowsEl.addEventListener('pointerdown',e=>{
+  const target=e.target.closest('[data-action="open-entry"]');
+  if(!target || armedEntry) return;
+  longPressJustFired=false;
+  pressStartXY={x:e.clientX,y:e.clientY};
+  pendingArmTarget=null;
+  longPressTimer=setTimeout(()=>{
+    pendingArmTarget={iso:target.dataset.iso,hour:target.dataset.hour,half:target.dataset.half,entryId:target.dataset.entryId};
+    longPressJustFired=true;
+    if(navigator.vibrate) navigator.vibrate(15);
+  },420);
+});
+bodyRowsEl.addEventListener('pointermove',e=>{
+  if(!longPressTimer || !pressStartXY) return;
+  if(Math.abs(e.clientX-pressStartXY.x)>10 || Math.abs(e.clientY-pressStartXY.y)>10){
+    clearTimeout(longPressTimer); longPressTimer=null;
+  }
+});
+bodyRowsEl.addEventListener('pointerup',()=>{
+  clearTimeout(longPressTimer); longPressTimer=null;
+  if(pendingArmTarget){
+    const t=pendingArmTarget; pendingArmTarget=null;
+    startArm(t.iso,t.hour,t.half,t.entryId);
+  }
+});
+bodyRowsEl.addEventListener('pointercancel',()=>{clearTimeout(longPressTimer);longPressTimer=null;pendingArmTarget=null});
+bodyRowsEl.addEventListener('pointerleave',()=>{clearTimeout(longPressTimer);longPressTimer=null;pendingArmTarget=null});
+
+function startArm(iso,hour,half,entryId){
+  const cell=getCell(iso,hour);
+  const arr=half==='first'?cell.first:cell.second;
+  const entry=arr.find(e=>e.id===entryId);
+  if(!entry) return;
+  armedEntry={iso,hour,half,entryId,canMove:!entry.groupId};
+  document.body.classList.add('is-moving');
+  document.getElementById('normalHint').style.display='none';
+  document.getElementById('moveBanner').classList.add('open');
+  document.getElementById('moveBannerText').textContent=armedEntry.canMove
+    ? `🔄 «${entry.name}» — اضغط × للحذف، أو خانة أخرى للنقل`
+    : `🔒 «${entry.name}» موعد ممتد — اضغط × للحذف فقط`;
+  renderBody();
+}
+function flashMoveBanner(msg){
+  const el=document.getElementById('moveBannerText');
+  const original=el.textContent;
+  el.textContent='⚠ '+msg;
+  setTimeout(()=>{if(armedEntry) el.textContent=original},1600);
+}
+function cancelArm(){
+  armedEntry=null;
+  document.body.classList.remove('is-moving');
+  document.getElementById('normalHint').style.display='';
+  document.getElementById('moveBanner').classList.remove('open');
+  renderBody();
+}
+async function completeArmedMove(targetIso,targetHour,targetHalf){
+  const sourceCell=getCell(armedEntry.iso,armedEntry.hour);
+  const sourceArr=armedEntry.half==='first'?sourceCell.first:sourceCell.second;
+  const idx=sourceArr.findIndex(e=>e.id===armedEntry.entryId);
+  if(idx===-1){cancelArm();return}
+  const entry=sourceArr[idx];
+  const targetCell=getCell(targetIso,targetHour);
+  const targetArr=targetHalf==='first'?targetCell.first:targetCell.second;
+  const cnt=targetArr.filter(e2=>(e2.doctorId||null)===(entry.doctorId||null)).length;
+  if(cnt>=MAX_PER_DOCTOR){flashMoveBanner('هذا الطبيب لديه ٤ مواعيد بالفعل هناك');return}
+  try{
+    const {error}=await supabaseClient
+      .from('appointments')
+      .update({appointment_date:targetIso,start_hour:Number(targetHour),half:targetHalf})
+      .eq('clinic_id',clinicId)
+      .eq('id',entry.id);
+    if(error) throw error;
+    sourceArr.splice(idx,1);
+    targetArr.push(entry);
+    cancelArm();
+  }catch(error){
+    console.error(error);
+    flashMoveBanner('تعذر نقل الموعد');
+  }
+}
+document.getElementById('cancelMoveBtn').addEventListener('click',cancelArm);
+
+function lockBodyScroll(lock){document.body.style.overflow=lock?'hidden':''}
+function syncOverlayHeight(){
+  if(!window.visualViewport) return;
+  const h=window.visualViewport.height+'px';
+  document.getElementById('overlay').style.height=h;
+  document.getElementById('doctorsOverlay').style.height=h;
+}
+if(window.visualViewport) window.visualViewport.addEventListener('resize',syncOverlayHeight);
+['patientName','patientNote','newDoctorName'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener('focus',()=>setTimeout(()=>el.scrollIntoView({block:'center',behavior:'smooth'}),300));
+});
+
+function showModalError(msg){
+  const el=document.getElementById('modalError');
+  el.textContent='⚠ '+msg; el.style.display='block';
+}
+function hideModalError(){document.getElementById('modalError').style.display='none'}
+function openModal(iso,hour,half,entryId){
+  activeSlot={iso,hour,half,entryId:entryId||null};
+  loadDoctors();
+  const cell=getCell(iso,Number(hour));
+  const arr=half==='first'?cell.first:cell.second;
+  const data=entryId?arr.find(e=>e.id===entryId):null;
+  const dateObj=new Date(iso+'T00:00:00');
+  const timeLabel=cell.split
+    ? fmtHalf(Number(hour),half)+' - '+(half==='first'?fmtHalf(Number(hour),'second'):fmtHour(Number(hour)+1))
+    : `${fmtHour(Number(hour))} - ${fmtHour(Number(hour)+1)}`;
+
+  document.getElementById('modalTitle').textContent=data?'تعديل الموعد':'حجز موعد جديد';
+  document.getElementById('modalSub').textContent=`${DAY_NAMES[dateObj.getDay()]} ${dateObj.getDate()} ${MONTH_NAMES[dateObj.getMonth()]} · ${timeLabel}`;
+  document.getElementById('patientName').value=data?data.name:'';
+  document.getElementById('patientNote').value=data?(data.note||''):'';
+  document.getElementById('patientName').style.borderColor='';
+  document.getElementById('nameError').style.display='none';
+  modalSelectedDoctorId=data?(data.doctorId||null):null;
+  renderDoctorChips();
+
+  const canGroup=(half==='first'&&!cell.split);
+  modalSelectedDuration=(data&&data.groupLen)?data.groupLen:1;
+  document.getElementById('durationSection').style.display=canGroup?'':'none';
+  if(canGroup) renderDurationChips();
+
+  hideModalError();
+  document.getElementById('overlay').classList.add('open');
+  lockBodyScroll(true); syncOverlayHeight();
+  setTimeout(()=>document.getElementById('patientName').focus(),50);
+}
+function renderDoctorChips(){
+  const wrap=document.getElementById('doctorChips');
+  if(!doctors.length){
+    wrap.innerHTML='<p class="doctor-empty-hint">لا يوجد أطباء بعد — أضفهم من زر «الأطباء» أعلى الصفحة</p>';
+    return;
+  }
+  wrap.innerHTML=doctors.map(doc=>`
+    <button type="button" class="doctor-chip ${modalSelectedDoctorId===doc.id?'selected':''}" data-id="${doc.id}" style="background:${doc.color}">${escapeHtml(doc.name)}</button>
+  `).join('')+`<button type="button" class="doctor-chip none-chip ${!modalSelectedDoctorId?'selected':''}" data-id="">بدون طبيب</button>`;
+}
+document.getElementById('doctorChips').addEventListener('click',e=>{
+  const chip=e.target.closest('.doctor-chip');
+  if(!chip) return;
+  modalSelectedDoctorId=chip.dataset.id||null;
+  renderDoctorChips();
+});
+function renderDurationChips(){
+  document.getElementById('durationChips').innerHTML=[1,2,3,4].map(n=>`
+    <button type="button" class="doctor-chip ${modalSelectedDuration===n?'selected':''}" data-n="${n}">${n===1?'ساعة واحدة':n+' ساعات'}</button>
+  `).join('');
+}
+document.getElementById('durationChips').addEventListener('click',e=>{
+  const chip=e.target.closest('[data-n]');
+  if(!chip) return;
+  modalSelectedDuration=Number(chip.dataset.n); renderDurationChips();
+});
+function closeModal(){
+  document.getElementById('overlay').classList.remove('open');
+  activeSlot=null;
+  if(!document.getElementById('doctorsOverlay').classList.contains('open')) lockBodyScroll(false);
+}
+document.getElementById('closeModal').addEventListener('click',closeModal);
+document.getElementById('cancelBtn').addEventListener('click',closeModal);
+document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==='overlay') closeModal()});
+
+document.getElementById('saveBtn').addEventListener('click',async ()=>{
+  if(!activeSlot) return;
+
+  const name=document.getElementById('patientName').value.trim();
+  const note=document.getElementById('patientNote').value.trim();
+  const doctorId=modalSelectedDoctorId||null;
+  const nameField=document.getElementById('patientName');
+
+  if(!name){
+    nameField.style.borderColor='var(--accent)';
+    document.getElementById('nameError').style.display='block';
+    nameField.focus();
+    return;
+  }
+
+  nameField.style.borderColor='';
+  document.getElementById('nameError').style.display='none';
+  hideModalError();
+
+  const {iso,hour,half,entryId}=activeSlot;
+  const cellNow=getCell(iso,Number(hour));
+  const canGroup=(half==='first'&&!cellNow.split);
+  const duration=canGroup?modalSelectedDuration:1;
+
+  let baseHour=Number(hour);
+  let oldGroupId=null;
+
+  if(entryId){
+    const arr=half==='first'?cellNow.first:cellNow.second;
+    const existing=arr.find(e=>e.id===entryId);
+    if(existing&&existing.groupId){
+      oldGroupId=existing.groupId;
+      baseHour=existing.groupStart;
+    }
+  }
+
+  try{
+    // Delete the old record/group first when editing.
+    if(entryId){
+      if(oldGroupId){
+        const {error}=await supabaseClient
+          .from('appointments')
+          .delete()
+          .eq('clinic_id',clinicId)
+          .eq('group_id',oldGroupId);
+        if(error) throw error;
+      }else{
+        const {error}=await supabaseClient
+          .from('appointments')
+          .delete()
+          .eq('clinic_id',clinicId)
+          .eq('id',entryId);
+        if(error) throw error;
+      }
+    }
+
+    if(duration>1){
+      const targetHours=Array.from({length:duration},(_,i)=>baseHour+i);
+
+      for(const h of targetHours){
+        if(!HOURS.includes(h)){
+          showModalError('المدة المطلوبة تتجاوز نهاية الدوام');
+          await loadWeek();
+          renderBody();
+          return;
+        }
+
+        const c=getCell(iso,h);
+        if(c.split){
+          showModalError(`الساعة ${fmtHour(h)} مقسومة، لا يمكن تضمينها بموعد ممتد`);
+          await loadWeek();
+          renderBody();
+          return;
+        }
+
+        const cnt=c.first.filter(e=>(e.doctorId||null)===(doctorId||null) && e.id!==entryId).length;
+        if(cnt>=MAX_PER_DOCTOR){
+          showModalError(`الطبيب لديه ٤ مواعيد بالفعل الساعة ${fmtHour(h)}`);
+          await loadWeek();
+          renderBody();
+          return;
+        }
+      }
+
+      const groupId=genId();
+      const rows=targetHours.map(h=>({
+        clinic_id:clinicId,
+        id:genId(),
+        appointment_date:iso,
+        start_hour:h,
+        half:'first',
+        patient_name:name,
+        note,
+        doctor_id:doctorId,
+        group_id:groupId,
+        group_start:baseHour,
+        group_len:duration,
+        created_by:currentUser.id
+      }));
+
+      const {error}=await supabaseClient.from('appointments').insert(rows);
+      if(error) throw error;
+    }else{
+      const c=getCell(iso,baseHour);
+      const arr=half==='first'?c.first:c.second;
+      const cnt=arr.filter(e=>(e.doctorId||null)===(doctorId||null) && e.id!==entryId).length;
+
+      if(cnt>=MAX_PER_DOCTOR){
+        showModalError('هذا الطبيب لديه ٤ مواعيد بالفعل في هذا الوقت');
+        await loadWeek();
+        renderBody();
+        return;
+      }
+
+      const {error}=await supabaseClient.from('appointments').insert({
+        clinic_id:clinicId,
+        id:entryId || genId(),
+        appointment_date:iso,
+        start_hour:baseHour,
+        half,
+        patient_name:name,
+        note,
+        doctor_id:doctorId,
+        group_id:null,
+        group_start:null,
+        group_len:null,
+        created_by:currentUser.id
+      });
+
+      if(error) throw error;
+    }
+
+    await loadWeek();
+    closeModal();
+    renderBody();
+  }catch(error){
+    console.error(error);
+    await loadWeek();
+    renderBody();
+    showModalError(error.message || 'تعذر حفظ الموعد');
+  }
+});
+
+document.getElementById('prevBtn').addEventListener('click',()=>{
+  if(armedEntry) cancelArm();
+  currentWeekStart.setDate(currentWeekStart.getDate()-7); render();
+});
+document.getElementById('nextBtn').addEventListener('click',()=>{
+  if(armedEntry) cancelArm();
+  currentWeekStart.setDate(currentWeekStart.getDate()+7); render();
+});
+document.getElementById('todayBtn').addEventListener('click',()=>{
+  if(armedEntry) cancelArm();
+  currentWeekStart=startOfWeek(new Date()); render();
+});
+
+const clinicInput=document.getElementById('clinicName');
+let nameSaveTimeout;
+clinicInput.addEventListener('input',()=>{
+  clearTimeout(nameSaveTimeout);
+  nameSaveTimeout=setTimeout(()=>saveClinicName(),500);
+});
+
+const doctorsOverlay=document.getElementById('doctorsOverlay');
+document.getElementById('doctorsBtn').addEventListener('click',()=>{
+  loadDoctors(); renderDoctorsList(); renderNewDoctorSwatches();
+  doctorsOverlay.classList.add('open'); lockBodyScroll(true); syncOverlayHeight();
+});
+document.getElementById('closeDoctorsModal').addEventListener('click',closeDoctorsModal);
+document.getElementById('logoutBtn').addEventListener('click',logout);
+doctorsOverlay.addEventListener('click',e=>{if(e.target.id==='doctorsOverlay') closeDoctorsModal()});
+function closeDoctorsModal(){
+  doctorsOverlay.classList.remove('open');
+  pendingDeleteDoctorId=null;
+  document.getElementById('newDoctorName').value='';
+  newDoctorColor=COLOR_PALETTE[0];
+  if(!document.getElementById('overlay').classList.contains('open')) lockBodyScroll(false);
+}
+function renderDoctorsList(){
+  const list=document.getElementById('doctorsList');
+  if(!doctors.length){
+    list.innerHTML='<p class="doctor-empty-hint" style="margin-top:0">لم تتم إضافة أطباء بعد</p>';
+    return;
+  }
+  list.innerHTML=doctors.map(doc=>`
+    <div class="doctor-row">
+      <button class="doctor-color-dot" data-action="pick-color" data-id="${doc.id}" style="background:${doc.color}" title="تغيير اللون"></button>
+      <input class="doctor-name-input" data-action="rename" data-id="${doc.id}" value="${escapeHtml(doc.name)}">
+      <button class="icon-btn ${pendingDeleteDoctorId===doc.id?'confirm':''}" data-action="delete-doctor" data-id="${doc.id}" title="حذف الطبيب">${pendingDeleteDoctorId===doc.id?'تأكيد':'🗑'}</button>
+    </div>
+    <div class="color-swatches inline-swatches" id="swatches-${doc.id}" style="display:none">
+      ${COLOR_PALETTE.map(c=>`<button class="swatch ${c===doc.color?'selected':''}" data-action="set-color" data-id="${doc.id}" data-color="${c}" style="background:${c}"></button>`).join('')}
+    </div>
+  `).join('');
+}
+function renderNewDoctorSwatches(){
+  document.getElementById('newDoctorColors').innerHTML=COLOR_PALETTE.map(c=>`
+    <button type="button" class="swatch ${c===newDoctorColor?'selected':''}" data-action="pick-new-color" data-color="${c}" style="background:${c}"></button>
+  `).join('');
+}
+document.getElementById('doctorsList').addEventListener('click',async e=>{
+  const btn=e.target.closest('[data-action]');
+  if(!btn) return;
+  const action=btn.dataset.action,id=btn.dataset.id;
+  if(action==='pick-color'){
+    const panel=document.getElementById(`swatches-${id}`);
+    const isOpen=panel.style.display!=='none';
+    document.querySelectorAll('.inline-swatches').forEach(p=>p.style.display='none');
+    panel.style.display=isOpen?'none':'flex';
+  } else if(action==='set-color'){
+    const doc=doctorById(id);
+    if(doc){
+      doc.color=btn.dataset.color;
+      try{
+        await saveDoctor(doc);
+        renderDoctorsList();renderBody();
+      }catch(error){console.error(error);flashGlobalMessage('تعذر حفظ لون الطبيب');}
+    }
+  } else if(action==='delete-doctor'){
+    if(pendingDeleteDoctorId!==id){
+      pendingDeleteDoctorId=id;renderDoctorsList();
+      setTimeout(()=>{if(pendingDeleteDoctorId===id){pendingDeleteDoctorId=null;renderDoctorsList()}},3000);
+      return;
+    }
+    try{
+      const {error}=await supabaseClient.from('doctors').delete().eq('clinic_id',clinicId).eq('id',id);
+      if(error) throw error;
+      doctors=doctors.filter(d=>d.id!==id);
+      pendingDeleteDoctorId=null;renderDoctorsList();renderBody();
+    }catch(error){console.error(error);flashGlobalMessage('تعذر حذف الطبيب');}
+  }
+});
+document.getElementById('doctorsList').addEventListener('change',async e=>{
+  const input=e.target.closest('[data-action="rename"]');
+  if(!input) return;
+  const doc=doctorById(input.dataset.id);
+  const newName=input.value.trim();
+  if(doc&&newName){
+    doc.name=newName;
+    try{await saveDoctor(doc);renderBody();}
+    catch(error){console.error(error);input.value=doc.name;flashGlobalMessage('تعذر حفظ اسم الطبيب');}
+  } else if(doc) input.value=doc.name;
+});
+document.getElementById('newDoctorColors').addEventListener('click',e=>{
+  const swatch=e.target.closest('[data-action="pick-new-color"]');
+  if(!swatch) return;
+  newDoctorColor=swatch.dataset.color;renderNewDoctorSwatches();
+});
+document.getElementById('addDoctorBtn').addEventListener('click',async ()=>{
+  const input=document.getElementById('newDoctorName');
+  const name=input.value.trim();
+  const errorEl=document.getElementById('doctorNameError');
+  if(!name){
+    input.style.borderColor='var(--accent)';errorEl.style.display='block';input.focus();return;
+  }
+  input.style.borderColor='';errorEl.style.display='none';
+  const doc={id:genId(),name,color:newDoctorColor};
+  try{
+    await saveDoctor(doc);
+    doctors.push(doc);
+    input.value='';newDoctorColor=COLOR_PALETTE[0];
+    renderDoctorsList();renderNewDoctorSwatches();renderBody();
+  }catch(error){console.error(error);flashGlobalMessage('تعذر إضافة الطبيب');}
+});
+
+(async function init(){
+  try{
+    if(!window.supabase){
+      showFatalError('تعذر تحميل مكتبة Supabase. تأكد من اتصال الإنترنت.');
+      return;
+    }
+
+    const authenticated=await requireAuth();
+    if(authenticated){
+      await render();
+    }
+  }catch(error){
+    console.error(error);
+    showFatalError(error.message || 'حدث خطأ أثناء تهيئة التطبيق.');
+  }
+})();
+</script>
+</body>
+</html>
