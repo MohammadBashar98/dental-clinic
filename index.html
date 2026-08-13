@@ -188,9 +188,8 @@ textarea.field-input{min-height:70px;resize:vertical}
         <path d="M24 6c-5 0-7.5 2.4-10.5 2.4C10 8.4 7 6.5 5 8.8c-2.3 2.7-1.6 8 .3 13.5 1.8 5.3 2.4 10.9 4 15.6.9 2.7 2.1 4.6 4 4.6 2.4 0 2.6-4.3 3.4-8.6.6-3.2 1.3-6.3 3.3-6.3s2.7 3.1 3.3 6.3c.8 4.3 1 8.6 3.4 8.6 1.9 0 3.1-1.9 4-4.6 1.6-4.7 2.2-10.3 4-15.6 1.9-5.5 2.6-10.8.3-13.5-2-2.3-5-.4-8.5-.4C31.5 8.4 29 6 24 6Z" fill="#fff" fill-opacity=".95"/>
       </svg>
       <div style="min-width:0">
-        <input id="clinicName" class="clinic-name" placeholder="عيادتي لطب الأسنان">
-        <div id="clinicCodeDisplay" style="font-size:10px;opacity:.75;margin-top:2px"></div>
-      </div>
+        <input id="clinicName" class="clinic-name" placeholder="White Smile Clinic" readonly>
+        </div>
     </div>
     <div class="header-actions">
       <button class="today-btn" id="doctorsBtn">👨‍⚕️ الأطباء</button>
@@ -308,9 +307,14 @@ let currentUser = null;
 let clinicId = null;
 let clinicName = 'عيادتي لطب الأسنان';
 
-function genId(){
+function newUuid(){
   if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
-  return 'e'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
+  const bytes=new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  bytes[6]=(bytes[6]&0x0f)|0x40;
+  bytes[8]=(bytes[8]&0x3f)|0x80;
+  const hex=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
 
 function startOfWeek(d){
@@ -378,36 +382,21 @@ async function requireAuth(){
 }
 
 async function ensureClinic(){
-  const {data: membership, error: membershipError} = await supabaseClient
+  if(!currentUser) throw new Error('Not authenticated');
+
+  const {data: membership, error} = await supabaseClient
     .from('clinic_members')
     .select('clinic_id')
     .eq('user_id', currentUser.id)
     .limit(1)
     .maybeSingle();
 
-  if(membershipError) throw membershipError;
-
-  if(membership){
-    clinicId = membership.clinic_id;
-    return;
+  if(error) throw error;
+  if(!membership?.clinic_id){
+    throw new Error('هذا الحساب غير مرتبط بعيادة. اطلب من مسؤول العيادة إضافته.');
   }
 
-  // First authenticated doctor creates the clinic automatically.
-  const {data: clinic, error: clinicError} = await supabaseClient
-    .from('clinics')
-    .insert({name:'عيادتي لطب الأسنان', created_by:currentUser.id})
-    .select('id')
-    .single();
-
-  if(clinicError) throw clinicError;
-
-  const {error: memberError} = await supabaseClient
-    .from('clinic_members')
-    .insert({clinic_id:clinic.id, user_id:currentUser.id, role:'owner'});
-
-  if(memberError) throw memberError;
-
-  clinicId = clinic.id;
+  clinicId = membership.clinic_id;
 }
 
 async function showLoginScreen(){
@@ -426,15 +415,11 @@ async function showLoginScreen(){
         <label class="field-label">كلمة المرور</label>
         <input class="field-input" id="authPassword" type="password" autocomplete="current-password" placeholder="••••••••">
 
-        <div id="clinicCodeWrap" style="display:none">
-          <label class="field-label">رمز العيادة <span style="font-weight:400;color:var(--text-muted)">(للانضمام إلى عيادة موجودة)</span></label>
-          <input class="field-input" id="clinicCode" autocomplete="off" placeholder="مثال: ABC12345">
-        </div>
 
         <p id="authError" class="field-error" style="display:none"></p>
 
         <button class="btn btn-save" id="loginBtn" style="width:100%;margin-top:4px">تسجيل الدخول</button>
-        <button class="btn btn-cancel" id="signupBtn" style="width:100%;margin-top:10px">إنشاء حساب طبيب</button>
+        <p style="color:var(--text-muted);font-size:12px;text-align:center;margin:12px 0 0">الحسابات تُنشأ مسبقاً من مسؤول العيادة.</p>
       </div>
     </div>`;
 
@@ -442,7 +427,7 @@ async function showLoginScreen(){
   const passwordEl=document.getElementById('authPassword');
   const errorEl=document.getElementById('authError');
 
-  const run = async (signup)=>{
+  const run = async ()=>{
     errorEl.style.display='none';
     const email=emailEl.value.trim();
     const password=passwordEl.value;
@@ -453,45 +438,15 @@ async function showLoginScreen(){
       return;
     }
 
-    if(password.length < 6){
-      errorEl.textContent='كلمة المرور يجب أن تكون 6 أحرف على الأقل';
-      errorEl.style.display='block';
-      return;
-    }
-
-    const button=signup?document.getElementById('signupBtn'):document.getElementById('loginBtn');
+    const button=document.getElementById('loginBtn');
     button.disabled=true;
-    button.textContent=signup?'جاري إنشاء الحساب...':'جاري تسجيل الدخول...';
+    button.textContent='جاري تسجيل الدخول...';
 
     try{
-      if(signup){
-        const {data,error}=await supabaseClient.auth.signUp({email,password});
-        if(error) throw error;
-
-        if(!data.session){
-          errorEl.textContent='تم إنشاء الحساب. إذا كان تأكيد البريد الإلكتروني مفعلاً في Supabase، افتح رسالة التأكيد ثم سجّل الدخول.';
-          errorEl.style.display='block';
-          return;
-        }
-
-        currentUser=data.user;
-        const code=(document.getElementById('clinicCode')?.value || '').trim().toUpperCase();
-
-        if(code){
-          const {data:joined,error:joinError}=await supabaseClient.rpc('join_clinic_by_code',{p_code:code});
-          if(joinError) throw joinError;
-          if(!joined) throw new Error('رمز العيادة غير صحيح أو انتهت صلاحيته');
-          clinicId=joined;
-        }else{
-          await ensureClinic();
-        }
-      }else{
-        const {error}=await supabaseClient.auth.signInWithPassword({email,password});
-        if(error) throw error;
-        currentUser=(await supabaseClient.auth.getUser()).data.user;
-        await ensureClinic();
-      }
-
+      const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+      if(error) throw error;
+      currentUser=data.user;
+      await ensureClinic();
       location.reload();
     }catch(error){
       console.error(error);
@@ -499,19 +454,14 @@ async function showLoginScreen(){
       errorEl.style.display='block';
     }finally{
       button.disabled=false;
-      button.textContent=signup?'إنشاء حساب طبيب':'تسجيل الدخول';
+      button.textContent='تسجيل الدخول';
     }
   };
 
-  document.getElementById('loginBtn').addEventListener('click',()=>run(false));
-  document.getElementById('signupBtn').addEventListener('click',()=>run(true));
-  document.getElementById('signupBtn').addEventListener('click',()=>{
-    document.getElementById('clinicCodeWrap').style.display='block';
-    document.getElementById('signupBtn').textContent='إنشاء حساب طبيب / الانضمام';
-  });
+  document.getElementById('loginBtn').addEventListener('click',run);
 
   passwordEl.addEventListener('keydown',e=>{
-    if(e.key==='Enter') run(false);
+    if(e.key==='Enter') run();
   });
 }
 
@@ -528,37 +478,20 @@ async function logout(){
 async function loadClinicName(){
   const {data,error}=await supabaseClient
     .from('clinics')
-    .select('name,invite_code')
+    .select('name')
     .eq('id',clinicId)
     .single();
 
   if(error) throw error;
-  clinicName=data?.name || 'عيادتي لطب الأسنان';
+  clinicName=data?.name || 'White Smile Clinic';
   document.getElementById('clinicName').value=clinicName;
-  const codeEl=document.getElementById('clinicCodeDisplay');
-  if(codeEl && data?.invite_code){
-    codeEl.textContent=`رمز العيادة: ${data.invite_code}`;
-    codeEl.title='شارك هذا الرمز مع الأطباء الذين تريد إضافتهم إلى نفس العيادة';
-  }
 }
 
-async function saveClinicName(){
-  const name=document.getElementById('clinicName').value.trim() || 'عيادتي لطب الأسنان';
-  const {error}=await supabaseClient
-    .from('clinics')
-    .update({name})
-    .eq('id',clinicId);
-
-  if(error){
-    console.error(error);
-    flashGlobalMessage('⚠ تعذر حفظ اسم العيادة');
-  }
-}
 
 async function loadDoctors(){
   const {data,error}=await supabaseClient
     .from('doctors')
-    .select('id,name,color')
+    .select('id,name,color,user_id')
     .eq('clinic_id',clinicId)
     .order('created_at',{ascending:true});
 
@@ -567,16 +500,21 @@ async function loadDoctors(){
 }
 
 async function saveDoctor(doc){
-  const {error}=await supabaseClient
+  const payload={
+    clinic_id:clinicId,
+    name:doc.name,
+    color:doc.color
+  };
+  if(doc.id) payload.id=doc.id;
+
+  const {data,error}=await supabaseClient
     .from('doctors')
-    .upsert({
-      id:doc.id,
-      clinic_id:clinicId,
-      name:doc.name,
-      color:doc.color
-    });
+    .upsert(payload)
+    .select('id,clinic_id,name,color,user_id,created_at')
+    .single();
 
   if(error) throw error;
+  return data;
 }
 
 async function loadWeek(){
@@ -618,10 +556,6 @@ async function loadWeek(){
   }
 }
 
-async function saveDay(iso){
-  // Persistence is handled by individual appointment mutations below.
-  return true;
-}
 
 function doctorById(id){ return doctors.find(d=>d.id===id); }
 
@@ -672,33 +606,6 @@ async function deleteEntry(iso,hour,half,entryId){
   }
 }
 
-function doctorById(id){ return doctors.find(d=>d.id===id); }
-function genId(){ return 'e'+Date.now()+'_'+Math.random().toString(36).slice(2,7); }
-
-function startOfWeek(d){
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = (day - 6 + 7) % 7;
-  date.setDate(date.getDate() - diff);
-  date.setHours(0,0,0,0);
-  return date;
-}
-function isoDate(d){
-  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
-  return `${y}-${m}-${day}`;
-}
-function isSameDay(a,b){ return isoDate(a)===isoDate(b); }
-function fmtHour(h){ return `${String(h).padStart(2,'0')}:00`; }
-function fmtHalf(h, half){
-  return half==='first' ? `${String(h).padStart(2,'0')}:00` : `${String(h).padStart(2,'0')}:30`;
-}
-function weekDates(){
-  return Array.from({length:7}, (_,i)=>{
-    const d = new Date(currentWeekStart);
-    d.setDate(d.getDate()+i);
-    return d;
-  });
-}
 function renderHeader(){
   const dates = weekDates();
   const first = dates[0], last = dates[6];
@@ -1087,10 +994,9 @@ document.getElementById('saveBtn').addEventListener('click',async ()=>{
         }
       }
 
-      const groupId=genId();
+      const groupId=newUuid();
       const rows=targetHours.map(h=>({
         clinic_id:clinicId,
-        id:genId(),
         appointment_date:iso,
         start_hour:h,
         half:'first',
@@ -1119,7 +1025,6 @@ document.getElementById('saveBtn').addEventListener('click',async ()=>{
 
       const {error}=await supabaseClient.from('appointments').insert({
         clinic_id:clinicId,
-        id:entryId || genId(),
         appointment_date:iso,
         start_hour:baseHour,
         half,
@@ -1159,12 +1064,6 @@ document.getElementById('todayBtn').addEventListener('click',()=>{
   currentWeekStart=startOfWeek(new Date()); render();
 });
 
-const clinicInput=document.getElementById('clinicName');
-let nameSaveTimeout;
-clinicInput.addEventListener('input',()=>{
-  clearTimeout(nameSaveTimeout);
-  nameSaveTimeout=setTimeout(()=>saveClinicName(),500);
-});
 
 const doctorsOverlay=document.getElementById('doctorsOverlay');
 document.getElementById('doctorsBtn').addEventListener('click',()=>{
@@ -1259,10 +1158,10 @@ document.getElementById('addDoctorBtn').addEventListener('click',async ()=>{
     input.style.borderColor='var(--accent)';errorEl.style.display='block';input.focus();return;
   }
   input.style.borderColor='';errorEl.style.display='none';
-  const doc={id:genId(),name,color:newDoctorColor};
+  const doc={name,color:newDoctorColor};
   try{
-    await saveDoctor(doc);
-    doctors.push(doc);
+    const saved=await saveDoctor(doc);
+    doctors.push(saved);
     input.value='';newDoctorColor=COLOR_PALETTE[0];
     renderDoctorsList();renderNewDoctorSwatches();renderBody();
   }catch(error){console.error(error);flashGlobalMessage('تعذر إضافة الطبيب');}
