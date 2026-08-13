@@ -92,9 +92,15 @@ td.slot-cell{padding:5px;vertical-align:top;border-inline-start:1px solid var(--
   display:flex;align-items:center;justify-content:center;cursor:pointer
 }
 .slot-list{
-  border-radius:10px;padding:20px 4px 4px;min-height:44px;position:relative;
+  border-radius:10px;padding:24px 4px 4px;min-height:44px;position:relative;
   display:flex;flex-direction:column;gap:3px
 }
+.slot-list-half-label{
+  position:absolute;top:4px;right:6px;left:6px;text-align:center;
+  font-family:'Tajawal';font-size:10px;font-weight:700;color:var(--text-muted);
+  pointer-events:none;line-height:1.2
+}
+.slot-list-half-label::before{content:'• ';color:var(--accent)}
 .slot-list.drop-target{background:var(--slot-empty)}
 .appt-card{
   border-radius:8px;padding:5px 7px;font-size:11.5px;cursor:pointer;position:relative;
@@ -103,6 +109,10 @@ td.slot-cell{padding:5px;vertical-align:top;border-inline-start:1px solid var(--
 .appt-card .slot-name{
   font-family:'Tajawal';font-weight:700;font-size:11.5px;color:var(--primary-dark);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block
+}
+.appt-card .slot-time{
+  font-family:'Tajawal';font-size:10px;font-weight:700;color:var(--text-muted);
+  display:block;margin-bottom:1px
 }
 .group-badge{font-size:9px;background:rgba(255,255,255,.65);border-radius:4px;padding:1px 4px;margin-inline-start:4px;font-weight:600}
 .appt-continue{height:9px;border-radius:5px;cursor:pointer;position:relative;opacity:.85;background:var(--slot-empty)}
@@ -625,6 +635,10 @@ function escapeHtml(str){
   div.textContent = str ?? '';
   return div.innerHTML;
 }
+function cellSplitTimeLabel(iso,hour,half){
+  const cell = getCell(iso, Number(hour));
+  return cell.split ? fmtHalf(Number(hour), half) : '';
+}
 function cardHtml(iso,hour,half,entry){
   const doc = entry.doctorId ? doctorById(entry.doctorId) : null;
   const bg = doc ? doc.color : 'var(--slot-empty)';
@@ -637,15 +651,18 @@ function cardHtml(iso,hour,half,entry){
     return `<div class="appt-continue ${isArmed?'slot-moving':''}" style="background:${bg}" data-action="open-entry" data-iso="${iso}" data-hour="${hour}" data-half="${half}" data-entry-id="${entry.id}" title="${escapeHtml(title)}">${delBtn}</div>`;
   }
   const badge = entry.groupLen && entry.groupLen>1 ? `<span class="group-badge">${entry.groupLen}س</span>` : '';
+  const timeLabel = cellSplitTimeLabel(iso, hour, half);
   return `<div class="appt-card ${isArmed?'slot-moving':''}" style="background:${bg}" data-action="open-entry" data-iso="${iso}" data-hour="${hour}" data-half="${half}" data-entry-id="${entry.id}" title="${escapeHtml(title)}">
-    ${delBtn}<span class="slot-name">${escapeHtml(entry.name)}${badge}</span>
+    ${delBtn}<span class="slot-time">${timeLabel}</span><span class="slot-name">${escapeHtml(entry.name)}${badge}</span>
   </div>`;
 }
 function listHtml(iso,hour,half,arr){
   const dropActive = armedEntry && armedEntry.canMove &&
     !(armedEntry.iso===iso && String(armedEntry.hour)===String(hour) && armedEntry.half===half);
   const cards = arr.map(e=>cardHtml(iso,hour,half,e)).join('');
+  const halfLabel = cellSplitTimeLabel(iso,hour,half);
   return `<div class="slot-list ${dropActive?'drop-target':''}" data-action="drop-zone" data-iso="${iso}" data-hour="${hour}" data-half="${half}">
+    ${halfLabel ? `<div class="slot-list-half-label">${halfLabel}</div>` : ''}
     ${cards}
     <button class="appt-add-btn" data-action="add-entry" data-iso="${iso}" data-hour="${hour}" data-half="${half}">+</button>
   </div>`;
