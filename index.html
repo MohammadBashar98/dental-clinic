@@ -185,17 +185,22 @@ textarea.field-input{min-height:70px;resize:vertical}
 .swatch.selected{border-color:var(--primary-dark)}
 .inline-swatches{margin:6px 0 10px;padding-inline-start:36px}
 .add-doctor-box{margin-top:8px;padding-top:14px;border-top:1px solid var(--border)}
+/* The schedule body is horizontally scrollable, while vertical scrolling belongs
+   to the page. The day header is a separate sticky horizontal strip so it can
+   remain visible during normal page scrolling on mobile. */
+.grid-header-sticky{
+  position:sticky;top:0;z-index:20;background:var(--surface);
+  border-bottom:1px solid var(--border);overflow:hidden;
+}
+.grid-header-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.grid-header-scroll::-webkit-scrollbar{display:none}
+.grid-header-sticky table{margin:0}
+.grid-scroll{overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch}
+.grid-scroll thead{display:none}
+.grid-wrap{overflow:visible}
 @media (max-width:600px){
-  /* Keep the day header visible while scrolling the schedule on mobile.
-     The schedule becomes its own two-axis scroll container so the sticky
-     header and the sticky time column share the same scroll context. */
-  .grid-scroll{
-    overflow:auto;
-    max-height:calc(100dvh - 205px);
-    overscroll-behavior:contain;
-    -webkit-overflow-scrolling:touch;
-  }
-  thead th{top:0;}
   .app-header{padding-inline:12px}
   .clinic-name{max-width:44vw;font-size:17px}
   .today-btn{padding:7px 10px}
@@ -238,7 +243,12 @@ textarea.field-input{min-height:70px;resize:vertical}
 </div>
 
 <div class="grid-wrap">
-  <div class="grid-scroll">
+  <div class="grid-header-sticky" id="gridHeaderSticky">
+    <div class="grid-header-scroll" id="gridHeaderScroll">
+      <table aria-hidden="true"><thead><tr id="stickyHeadRow"></tr></thead></table>
+    </div>
+  </div>
+  <div class="grid-scroll" id="gridScroll">
     <table id="scheduleTable">
       <thead><tr id="headRow"></tr></thead>
       <tbody id="bodyRows"></tbody>
@@ -638,11 +648,12 @@ function renderHeader(){
     ? `${first.getDate()} - ${last.getDate()} ${MONTH_NAMES[first.getMonth()]} ${first.getFullYear()}`
     : `${first.getDate()} ${MONTH_NAMES[first.getMonth()]} - ${last.getDate()} ${MONTH_NAMES[last.getMonth()]} ${last.getFullYear()}`;
   document.getElementById('weekRange').innerHTML = `الأسبوع الحالي<span class="sub">${rangeText}</span>`;
-  const headRow = document.getElementById('headRow');
-  headRow.innerHTML = '<th class="time-col">الوقت</th>' + dates.map(d=>{
+  const headerHtml = '<th class="time-col">الوقت</th>' + dates.map(d=>{
     const today = isSameDay(d,new Date());
     return `<th class="${today?'is-today':''}">${DAY_NAMES[d.getDay()]}<span class="daynum">${d.getDate()} ${MONTH_NAMES[d.getMonth()]}</span></th>`;
   }).join('');
+  document.getElementById('headRow').innerHTML = headerHtml;
+  document.getElementById('stickyHeadRow').innerHTML = headerHtml;
 }
 function escapeHtml(str){
   const div = document.createElement('div');
@@ -703,6 +714,24 @@ function renderBody(){
     }).join('');
     return `<tr><td class="time-cell">${fmtHour(hour)}</td>${cells}</tr>`;
   }).join('');
+}
+function syncScheduleHeaderScroll(){
+  const bodyScroll=document.getElementById('gridScroll');
+  const headerScroll=document.getElementById('gridHeaderScroll');
+  if(!bodyScroll || !headerScroll) return;
+  let syncing=false;
+  bodyScroll.addEventListener('scroll',()=>{
+    if(syncing) return;
+    syncing=true;
+    headerScroll.scrollLeft=bodyScroll.scrollLeft;
+    requestAnimationFrame(()=>{syncing=false;});
+  },{passive:true});
+  headerScroll.addEventListener('scroll',()=>{
+    if(syncing) return;
+    syncing=true;
+    bodyScroll.scrollLeft=headerScroll.scrollLeft;
+    requestAnimationFrame(()=>{syncing=false;});
+  },{passive:true});
 }
 async function render(){
   await Promise.all([loadWeek(), loadDoctors(), loadClinicName()]);
@@ -1236,6 +1265,7 @@ document.getElementById('addDoctorBtn').addEventListener('click',async ()=>{
 
     const authenticated=await requireAuth();
     if(authenticated){
+      syncScheduleHeaderScroll();
       await render();
     }
   }catch(error){
