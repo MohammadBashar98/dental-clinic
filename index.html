@@ -136,7 +136,11 @@ td.slot-cell{padding:5px;vertical-align:top;border-inline-start:1px solid var(--
 .modal{
   background:#fff;width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:20px 18px 26px;
   box-shadow:0 -8px 30px rgba(0,0,0,.2);animation:slideUp .18s ease-out;position:relative;
-  max-height:88vh;max-height:88dvh;overflow-y:auto;-webkit-overflow-scrolling:touch
+  max-height:min(88vh,calc(var(--visual-vh, 100dvh) - 12px));
+  overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  scroll-padding-top:24px;scroll-padding-bottom:180px;
+  padding-bottom:calc(26px + env(safe-area-inset-bottom));
 }
 @keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
 .modal-title{font-family:'Tajawal';font-weight:800;font-size:16px;margin:0 0 2px}
@@ -182,6 +186,16 @@ textarea.field-input{min-height:70px;resize:vertical}
 .inline-swatches{margin:6px 0 10px;padding-inline-start:36px}
 .add-doctor-box{margin-top:8px;padding-top:14px;border-top:1px solid var(--border)}
 @media (max-width:600px){
+  /* Keep the day header visible while scrolling the schedule on mobile.
+     The schedule becomes its own two-axis scroll container so the sticky
+     header and the sticky time column share the same scroll context. */
+  .grid-scroll{
+    overflow:auto;
+    max-height:calc(100dvh - 205px);
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  thead th{top:0;}
   .app-header{padding-inline:12px}
   .clinic-name{max-width:44vw;font-size:17px}
   .today-btn{padding:7px 10px}
@@ -846,16 +860,45 @@ document.getElementById('cancelMoveBtn').addEventListener('click',cancelArm);
 
 function lockBodyScroll(lock){document.body.style.overflow=lock?'hidden':''}
 function syncOverlayHeight(){
-  if(!window.visualViewport) return;
-  const h=window.visualViewport.height+'px';
-  document.getElementById('overlay').style.height=h;
-  document.getElementById('doctorsOverlay').style.height=h;
+  const vv=window.visualViewport;
+  if(!vv) return;
+  const h=vv.height;
+  const px=h+'px';
+  document.documentElement.style.setProperty('--visual-vh',px);
+  document.getElementById('overlay').style.height=px;
+  document.getElementById('doctorsOverlay').style.height=px;
+
+  // When the mobile keyboard opens, keep the focused field inside the
+  // bottom-sheet's own scroll area instead of relying on body scrolling.
+  const focused=document.activeElement;
+  const modal=focused && focused.closest('.modal');
+  if(modal && (focused.matches('input,textarea') || focused.isContentEditable)){
+    requestAnimationFrame(()=>{
+      const targetTop=Math.max(0,focused.offsetTop - Math.min(140,modal.clientHeight*0.28));
+      modal.scrollTo({top:targetTop,behavior:'smooth'});
+    });
+  }
 }
-if(window.visualViewport) window.visualViewport.addEventListener('resize',syncOverlayHeight);
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',syncOverlayHeight);
+  window.visualViewport.addEventListener('scroll',syncOverlayHeight);
+}
+window.addEventListener('resize',syncOverlayHeight);
 ['patientName','patientNote','newDoctorName'].forEach(id=>{
   const el=document.getElementById(id);
-  if(el) el.addEventListener('focus',()=>setTimeout(()=>el.scrollIntoView({block:'center',behavior:'smooth'}),300));
+  if(el){
+    el.addEventListener('focus',()=>{
+      syncOverlayHeight();
+      setTimeout(()=>{
+        const modal=el.closest('.modal');
+        if(!modal) return;
+        const targetTop=Math.max(0,el.offsetTop - Math.min(140,modal.clientHeight*0.28));
+        modal.scrollTo({top:targetTop,behavior:'smooth'});
+      },350);
+    });
+  }
 });
+syncOverlayHeight();
 
 function showModalError(msg){
   const el=document.getElementById('modalError');
