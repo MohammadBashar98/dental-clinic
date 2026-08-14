@@ -185,11 +185,11 @@ textarea.field-input{min-height:70px;resize:vertical}
 .swatch.selected{border-color:var(--primary-dark)}
 .inline-swatches{margin:6px 0 10px;padding-inline-start:36px}
 .add-doctor-box{margin-top:8px;padding-top:14px;border-top:1px solid var(--border)}
-/* The schedule body is horizontally scrollable, while vertical scrolling belongs
-   to the page. The day header is a separate sticky horizontal strip so it can
-   remain visible during normal page scrolling on mobile. */
+/* Keep the schedule lightweight: the schedule itself scrolls vertically and
+   horizontally. The day header stays visible above that scrolling viewport,
+   while the time column remains sticky during horizontal scrolling. */
 .grid-header-sticky{
-  position:sticky;top:0;z-index:20;background:var(--surface);
+  position:relative;z-index:20;background:var(--surface);
   border-bottom:1px solid var(--border);overflow:hidden;
 }
 .grid-header-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
@@ -197,14 +197,20 @@ textarea.field-input{min-height:70px;resize:vertical}
 }
 .grid-header-scroll::-webkit-scrollbar{display:none}
 .grid-header-sticky table{margin:0}
-.grid-scroll{overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch}
+.grid-scroll{
+  overflow:auto;
+  max-height:calc(100vh - 230px);
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+}
 .grid-scroll thead{display:none}
-.grid-wrap{overflow:visible}
+.grid-wrap{overflow:hidden}
 @media (max-width:600px){
   .app-header{padding-inline:12px}
   .clinic-name{max-width:44vw;font-size:17px}
   .today-btn{padding:7px 10px}
   table{min-width:850px}
+  .grid-scroll{max-height:calc(100dvh - 190px)}
 }
 </style>
 </head>
